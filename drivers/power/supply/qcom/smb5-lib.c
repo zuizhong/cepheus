@@ -6625,6 +6625,12 @@ int smblib_get_quick_charge_type(struct smb_charger *chg)
 			|| (pval.intval == POWER_SUPPLY_HEALTH_HOT))
 		return 0;
 
+	/* davinic do not need to report this type */
+	if ((chg->real_charger_type == POWER_SUPPLY_TYPE_USB_PD)
+				&& chg->pd_verifed && chg->qc_class_ab) {
+		return QUICK_CHARGE_TURBE;
+	}
+
 	if (chg->is_qc_class_b)
 		return QUICK_CHARGE_FLASH;
 
