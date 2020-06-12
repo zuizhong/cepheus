@@ -445,10 +445,12 @@ ssize_t dsi_panel_mipi_reg_write(struct dsi_panel *panel,
 ssize_t dsi_panel_mipi_reg_read(struct dsi_panel *panel,
 				char *buf);
 
+void dsi_panel_calc_dsi_transfer_time(struct dsi_host_common_cfg *config,
+		struct dsi_mode_info *timing);
+		
 int dsi_panel_set_thermal_hbm_disabled(struct dsi_panel *panel,
 				bool thermal_hbm_disabled);
 int dsi_panel_get_thermal_hbm_disabled(struct dsi_panel *panel,
 				bool *thermal_hbm_disabled);
-
 
 #endif /* _DSI_PANEL_H_ */
