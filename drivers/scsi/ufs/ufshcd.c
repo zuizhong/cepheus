@@ -10999,14 +10999,6 @@ int ufshcd_system_thaw(struct ufs_hba *hba)
 }
 EXPORT_SYMBOL(ufshcd_system_thaw);
 
-static inline void ufshcd_add_sysfs_nodes(struct ufs_hba *hba)
-{
-}
-
-static inline void ufshcd_remove_sysfs_nodes(struct ufs_hba *hba)
-{
-}
-
 static void __ufshcd_shutdown_clkscaling(struct ufs_hba *hba)
 {
 	bool suspend = false;
