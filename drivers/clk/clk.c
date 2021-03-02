@@ -45,6 +45,12 @@ static HLIST_HEAD(clk_root_list);
 static HLIST_HEAD(clk_orphan_list);
 static LIST_HEAD(clk_notifier_list);
 
+static struct hlist_head *all_lists[] = {
+	&clk_root_list,
+	&clk_orphan_list,
+	NULL,
+};
+
 struct clk_handoff_vdd {
 	struct list_head list;
 	struct clk_vdd_class *vdd_class;
@@ -62,12 +68,6 @@ static DEFINE_MUTEX(vdd_class_list_lock);
  * returning from clk_core_set_rate_nolock().
  */
 static LIST_HEAD(clk_rate_change_list);
-
-static struct hlist_head *all_lists[] = {
-	&clk_root_list,
-	&clk_orphan_list,
-	NULL,
-};
 
 /***    private data structures    ***/
 
@@ -3532,14 +3532,6 @@ static inline void clk_debug_reparent(struct clk_core *core,
 {
 }
 static inline void clk_debug_unregister(struct clk_core *core)
-{
-}
-
-void clk_debug_print_hw(struct clk_core *clk, struct seq_file *f)
-{
-}
-
-void clock_debug_print_enabled(bool print_parent)
 {
 }
 #endif
