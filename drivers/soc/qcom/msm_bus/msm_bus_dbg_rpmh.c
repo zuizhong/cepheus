@@ -1,5 +1,4 @@
-/* Copyright (c) 2010-2012, 2014-2018, 2020-2021, The Linux Foundation. All rights
- * reserved.
+/* Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -28,9 +27,8 @@
 #include <linux/msm-bus.h>
 #include <linux/msm_bus_rules.h>
 #include "msm_bus_core.h"
-#include "msm_bus_adhoc.h"
+#include "msm_bus_rpmh.h"
 
-#define CREATE_TRACE_POINTS
 #include <trace/events/trace_msm_bus.h>
 
 #define MAX_BUFF_SIZE 4096
@@ -40,7 +38,7 @@ static struct dentry *clients;
 static struct dentry *dir;
 static DEFINE_MUTEX(msm_bus_dbg_fablist_lock);
 static DEFINE_RT_MUTEX(msm_bus_dbg_cllist_lock);
-struct msm_bus_dbg_state {
+static struct msm_bus_dbg_state {
 	uint32_t cl;
 	uint8_t enable;
 	uint8_t current_index;
@@ -66,9 +64,14 @@ struct msm_bus_fab_list {
 };
 
 static char *rules_buf;
+static struct msm_bus_cldata *dbg_cldata1;
+static struct msm_bus_cldata *dbg_cldata2;
+static struct msm_bus_fab_list *dbg_fablist;
+static char *dbg_buf;
 
-LIST_HEAD(fabdata_list);
-LIST_HEAD(cl_list);
+static LIST_HEAD(fabdata_list);
+static LIST_HEAD(cl_list);
+static LIST_HEAD(bcm_list);
 
 /**
  * The following structures and functions are used for
@@ -326,7 +329,7 @@ static const struct file_operations client_data_fops = {
 	.read		= client_data_read,
 };
 
-struct dentry *msm_bus_dbg_create(const char *name, mode_t mode,
+static struct dentry *msm_bus_dbg_create(const char *name, mode_t mode,
 	struct dentry *dent, uint32_t clid)
 {
 	if (dent == NULL) {
@@ -340,17 +343,27 @@ struct dentry *msm_bus_dbg_create(const char *name, mode_t mode,
 int msm_bus_dbg_add_client(const struct msm_bus_client_handle *pdata)
 
 {
-	struct msm_bus_cldata *cldata;
-
-	cldata = kzalloc(sizeof(struct msm_bus_cldata), GFP_KERNEL);
-	if (!cldata) {
+	dbg_cldata1 = kzalloc(sizeof(struct msm_bus_cldata), GFP_KERNEL);
+	if (!dbg_cldata1) {
 		MSM_BUS_DBG("Failed to allocate memory for client data\n");
 		return -ENOMEM;
 	}
-	memset(cldata, 0, sizeof(struct msm_bus_cldata));
-	cldata->handle = pdata;
+	memset(dbg_cldata1, 0, sizeof(struct msm_bus_cldata));
+	dbg_cldata1->handle = pdata;
 	rt_mutex_lock(&msm_bus_dbg_cllist_lock);
-	list_add_tail(&cldata->list, &cl_list);
+	list_add_tail(&dbg_cldata1->list, &cl_list);
+	rt_mutex_unlock(&msm_bus_dbg_cllist_lock);
+	return 0;
+}
+
+int msm_bus_dbg_add_bcm(struct msm_bus_node_device_type *cur_bcm)
+{
+	if (!cur_bcm) {
+		MSM_BUS_DBG("Failed to add BCM node\n");
+		return -ENOMEM;
+	}
+	rt_mutex_lock(&msm_bus_dbg_cllist_lock);
+	list_add_tail(&cur_bcm->dbg_link, &bcm_list);
 	rt_mutex_unlock(&msm_bus_dbg_cllist_lock);
 	return 0;
 }
@@ -433,24 +446,33 @@ void msm_bus_dbg_remove_client(const struct msm_bus_client_handle *pdata)
 	rt_mutex_unlock(&msm_bus_dbg_cllist_lock);
 }
 
+void msm_bus_dbg_remove_bcm(struct msm_bus_node_device_type *cur_bcm)
+{
+	if (!cur_bcm) {
+		MSM_BUS_DBG("Failed to remove BCM node\n");
+		return;
+	}
+	rt_mutex_lock(&msm_bus_dbg_cllist_lock);
+	list_del_init(&cur_bcm->dbg_link);
+	rt_mutex_unlock(&msm_bus_dbg_cllist_lock);
+}
+
 static int msm_bus_dbg_record_client(const struct msm_bus_scale_pdata *pdata,
 	int index, uint32_t clid, struct dentry *file)
 {
-	struct msm_bus_cldata *cldata;
-
-	cldata = kmalloc(sizeof(struct msm_bus_cldata), GFP_KERNEL);
-	if (!cldata) {
+	dbg_cldata2 = kmalloc(sizeof(struct msm_bus_cldata), GFP_KERNEL);
+	if (!dbg_cldata2) {
 		MSM_BUS_DBG("Failed to allocate memory for client data\n");
 		return -ENOMEM;
 	}
-	memset(cldata, 0, sizeof(struct msm_bus_cldata));
-	cldata->pdata = pdata;
-	cldata->index = index;
-	cldata->clid = clid;
-	cldata->file = file;
-	cldata->size = 0;
+	memset(dbg_cldata2, 0, sizeof(struct msm_bus_cldata));
+	dbg_cldata2->pdata = pdata;
+	dbg_cldata2->index = index;
+	dbg_cldata2->clid = clid;
+	dbg_cldata2->file = file;
+	dbg_cldata2->size = 0;
 	rt_mutex_lock(&msm_bus_dbg_cllist_lock);
-	list_add_tail(&cldata->list, &cl_list);
+	list_add_tail(&dbg_cldata2->list, &cl_list);
 	rt_mutex_unlock(&msm_bus_dbg_cllist_lock);
 	return 0;
 }
@@ -555,12 +577,13 @@ static ssize_t  msm_bus_dbg_update_request_write(struct file *file,
 	unsigned long index = 0;
 	int ret = 0;
 	char *chid;
-	char *buf = kmalloc((sizeof(char) * (cnt + 1)), GFP_KERNEL);
 	int found = 0;
 	uint32_t clid;
 	ssize_t res = cnt;
 
-	if (!buf || IS_ERR(buf)) {
+	dbg_buf = kmalloc((sizeof(char) * (cnt + 1)), GFP_KERNEL);
+
+	if (!dbg_buf || IS_ERR(dbg_buf)) {
 		MSM_BUS_ERR("Memory allocation for buffer failed\n");
 		return -ENOMEM;
 	}
@@ -568,13 +591,13 @@ static ssize_t  msm_bus_dbg_update_request_write(struct file *file,
 		res = 0;
 		goto out;
 	}
-	if (copy_from_user(buf, ubuf, cnt)) {
+	if (copy_from_user(dbg_buf, ubuf, cnt)) {
 		res = -EFAULT;
 		goto out;
 	}
-	buf[cnt] = '\0';
-	chid = buf;
-	MSM_BUS_DBG("buffer: %s\n size: %zu\n", buf, sizeof(ubuf));
+	dbg_buf[cnt] = '\0';
+	chid = dbg_buf;
+	MSM_BUS_DBG("buffer: %s\n size: %zu\n", dbg_buf, sizeof(dbg_buf));
 
 	rt_mutex_lock(&msm_bus_dbg_cllist_lock);
 	list_for_each_entry(cldata, &cl_list, list) {
@@ -612,7 +635,7 @@ static ssize_t  msm_bus_dbg_update_request_write(struct file *file,
 		msm_bus_scale_client_update_request(clid, index);
 
 out:
-	kfree(buf);
+	kfree(dbg_buf);
 	return res;
 }
 
@@ -677,20 +700,19 @@ static const struct file_operations rules_dbg_fops = {
 
 static int msm_bus_dbg_record_fabric(const char *fabname, struct dentry *file)
 {
-	struct msm_bus_fab_list *fablist;
 	int ret = 0;
 
 	mutex_lock(&msm_bus_dbg_fablist_lock);
-	fablist = kmalloc(sizeof(struct msm_bus_fab_list), GFP_KERNEL);
-	if (!fablist) {
+	dbg_fablist = kmalloc(sizeof(struct msm_bus_fab_list), GFP_KERNEL);
+	if (!dbg_fablist) {
 		MSM_BUS_DBG("Failed to allocate memory for commit data\n");
 		ret =  -ENOMEM;
 		goto err;
 	}
 
-	fablist->name = fabname;
-	fablist->size = 0;
-	list_add_tail(&fablist->list, &fabdata_list);
+	dbg_fablist->name = fabname;
+	dbg_fablist->size = 0;
+	list_add_tail(&dbg_fablist->list, &fabdata_list);
 err:
 	mutex_unlock(&msm_bus_dbg_fablist_lock);
 	return ret;
@@ -764,6 +786,84 @@ static int msm_bus_dbg_fill_fab_buffer(const char *fabname,
 static const struct file_operations msm_bus_dbg_update_request_fops = {
 	.open = client_data_open,
 	.write = msm_bus_dbg_update_request_write,
+};
+
+static int bcm_client_open(struct inode *inode,
+	struct file *file)
+{
+	file->private_data = inode->i_private;
+	return 0;
+}
+
+static ssize_t bcm_client_read(struct file *file,
+	char __user *buf, size_t count, loff_t *ppos)
+{
+	int i, j, cnt;
+	char msg[50];
+	struct device *dev = NULL;
+	struct link_node *lnode_list = NULL;
+	struct msm_bus_node_device_type *cur_node = NULL;
+	struct msm_bus_node_device_type *cur_bcm = NULL;
+	u64 act_ab, act_ib, dual_ab, dual_ib;
+
+	cnt = scnprintf(msg, 64,
+		"\nDumping curent BCM client votes to trace log\n");
+	if (*ppos)
+		goto exit_dump_bcm_clients_read;
+
+	rt_mutex_lock(&msm_bus_dbg_cllist_lock);
+	list_for_each_entry(cur_bcm, &bcm_list, dbg_link) {
+		for (i = 0; i < cur_bcm->num_lnodes; i++) {
+			if (!cur_bcm->lnode_list[i].in_use)
+				continue;
+
+			dev = bus_find_device(&msm_bus_type, NULL,
+				(void *)&cur_bcm->lnode_list[i].bus_dev_id,
+				msm_bus_device_match_adhoc);
+			cur_node = to_msm_bus_node(dev);
+
+			for (j = 0; j < cur_node->num_lnodes; j++) {
+				if (!cur_node->lnode_list[j].in_use)
+					continue;
+
+				lnode_list = &cur_node->lnode_list[j];
+				act_ab = lnode_list->lnode_ab[ACTIVE_CTX];
+				act_ib = lnode_list->lnode_ib[ACTIVE_CTX];
+				dual_ab = lnode_list->lnode_ab[DUAL_CTX];
+				dual_ib = lnode_list->lnode_ib[DUAL_CTX];
+
+				if (!act_ab && !act_ib && !dual_ab && !dual_ib)
+					continue;
+
+				if (!act_ab && !act_ib) {
+					act_ab = dual_ab;
+					act_ib = dual_ib;
+				}
+
+				trace_bus_bcm_client_status(
+					cur_bcm->node_info->name,
+					cur_node->lnode_list[j].cl_name,
+					act_ab, act_ib, dual_ab, dual_ib);
+
+				MSM_BUS_ERR(
+					"bcm=%s client=%s act_ab=%llu act_ib=%llu slp_ab=%llu slp_ib=%llu\n",
+					cur_bcm->node_info->name,
+					cur_node->lnode_list[j].cl_name,
+					(unsigned long long)act_ab,
+					(unsigned long long)act_ib,
+					(unsigned long long)dual_ab,
+					(unsigned long long)dual_ib);
+			}
+		}
+	}
+	rt_mutex_unlock(&msm_bus_dbg_cllist_lock);
+exit_dump_bcm_clients_read:
+	return simple_read_from_buffer(buf, count, ppos, msg, cnt);
+}
+
+static const struct file_operations msm_bus_dbg_dump_bcm_clients_fops = {
+	.open = bcm_client_open,
+	.read = bcm_client_read,
 };
 
 static int msm_bus_dbg_dump_clients_open(struct inode *inode, struct file *file)
@@ -949,6 +1049,10 @@ static int __init msm_bus_debugfs_init(void)
 
 	if (debugfs_create_file("dump_clients", 0644,
 		clients, NULL, &msm_bus_dbg_dump_clients_fops) == NULL)
+		goto err;
+
+	if (debugfs_create_file("dump_bcm_clients", 0644,
+		clients, NULL, &msm_bus_dbg_dump_bcm_clients_fops) == NULL)
 		goto err;
 
 	mutex_lock(&msm_bus_dbg_fablist_lock);
