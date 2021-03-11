@@ -1636,13 +1636,8 @@ static int ufs_qcom_setup_clocks(struct ufs_hba *hba, bool on,
 		err = ufs_qcom_ice_suspend(host);
 		if (err)
 			goto out;
-
-		/*
-		 * If auto hibern8 is enabled then the link will already
-		 * be in hibern8 state and the ref clock can be gated.
-		 */
-		if ((ufshcd_is_auto_hibern8_enabled(hba) ||
-		    !ufs_qcom_is_link_active(hba))) {
+							
+		if (!ufs_qcom_is_link_active(hba)) {
 			/* disable device ref_clk */
 			ufs_qcom_dev_ref_clk_ctrl(host, false);
 
