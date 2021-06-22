@@ -9,3 +9,15 @@ obj-$(CONFIG_SCSI_UFSHCD_PCI) += ufshcd-pci.o
 obj-$(CONFIG_SCSI_UFSHCD_PLATFORM) += ufshcd-pltfrm.o
 obj-$(CONFIG_SCSI_UFS_TEST) += ufs_test.o
 obj-$(CONFIG_DEBUG_FS) += ufs-debugfs.o ufs-qcom-debugfs.o
+
+ifeq ($(CONFIG_UFSFEATURE30), y)
+	obj-$(CONFIG_UFSFEATURE) += ufs30/ufsfeature.o
+	obj-$(CONFIG_UFSHPB) += ufs30/ufshpb.o
+	obj-$(CONFIG_UFSTW) += ufs30/ufstw.o
+else
+	ifeq ($(CONFIG_UFSFEATURE31), y)
+		obj-$(CONFIG_UFSFEATURE) += ufs31/ufsfeature.o
+		obj-$(CONFIG_UFSHPB) += ufs31/ufshpb.o
+		obj-$(CONFIG_UFSTW) += ufs31/ufstw.o
+	endif
+endif
