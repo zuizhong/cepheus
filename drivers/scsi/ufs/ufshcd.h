@@ -363,6 +363,7 @@ struct ufs_hba_variant_ops {
 	u32	(*get_scale_down_gear)(struct ufs_hba *);
 	int	(*set_bus_vote)(struct ufs_hba *, bool);
 	int	(*phy_initialization)(struct ufs_hba *);
+	u32	(*get_user_cap_mode)(struct ufs_hba *hba);
 #ifdef CONFIG_DEBUG_FS
 	void	(*add_debugfs)(struct ufs_hba *hba, struct dentry *root);
 	void	(*remove_debugfs)(struct ufs_hba *hba);
@@ -940,6 +941,7 @@ struct ufs_hba {
 	/* Keeps information of the UFS device connected to this host */
 	struct ufs_dev_info dev_info;
 	bool auto_bkops_enabled;
+	bool wb_buf_flush_enabled;
 
 #ifdef CONFIG_DEBUG_FS
 	struct debugfs_files debugfs_files;
@@ -1053,6 +1055,8 @@ struct ufs_hba {
 		atomic_t count;
 		bool active;
 	} pm_qos;
+
+	bool wb_enabled;
 };
 
 static inline void ufshcd_mark_shutdown_ongoing(struct ufs_hba *hba)
@@ -1559,5 +1563,11 @@ static inline int ufshcd_vops_crypto_engine_get_req_status(struct ufs_hba *hba)
 	return 0;
 }
 
-#endif /* End of Header */
+static inline unsigned int ufshcd_vops_get_user_cap_mode(struct ufs_hba *hba)
+{
+	if (hba->var && hba->var->vops->get_user_cap_mode)
+		return hba->var->vops->get_user_cap_mode(hba);
+	return 0;
+}
 
+#endif /* End of Header */
