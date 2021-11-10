@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
- * Copyright (C) 2019 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -345,6 +344,8 @@ enum dsi_cmd_set_type {
 	DSI_CMD_SET_DISP_HBM_OFF,
 	DSI_CMD_SET_DISP_HBM_FOD_ON,
 	DSI_CMD_SET_DISP_HBM_FOD_OFF,
+	DSI_CMD_SET_DISP_HBM_FOD_OFF_DOZE_HBM_ON,
+	DSI_CMD_SET_DISP_HBM_FOD_OFF_DOZE_LBM_ON,
 	DSI_CMD_SET_DISP_HBM_FOD2NORM,
 	DSI_CMD_SET_DISP_OFF_MODE,
 	DSI_CMD_SET_DISP_ON_MODE,

@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
- * Copyright (C) 2019 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -121,7 +120,6 @@ struct dsi_backlight_config {
 	u32 bl_scale_ad;
 
 	int en_gpio;
-	bool bl_remap_flag;
 	bool dcs_type_ss;
 	/* PWM params */
 	struct pwm_device *pwm_bl;
@@ -168,9 +166,6 @@ struct drm_panel_esd_config {
 	u8 *return_buf;
 	u8 *status_buf;
 	u32 groups;
-	int esd_err_irq_gpio;
-	int esd_err_irq;
-	int esd_err_irq_flags;
 };
 
 struct dsi_read_config {
@@ -238,7 +233,11 @@ struct dsi_panel {
 	u32 last_bl_lvl;
 	s32 backlight_delta;
 
+	bool hbm_enabled;
 	bool fod_hbm_enabled; /* prevent set DISPPARAM_DOZE_BRIGHTNESS_HBM/LBM in FOD HBM */
+	bool fod_dimlayer_enabled;
+	bool fod_dimlayer_hbm_enabled;
+	bool fod_ui_ready;
 	u32 doze_backlight_threshold;
 	u32 fod_off_dimming_delay;
 	ktime_t fod_hbm_off_time;
@@ -271,6 +270,11 @@ struct dsi_panel {
 	u64 bl_lowlevel_duration;
 	u64 hbm_duration;
 	u64 hbm_times;
+
+	u32 dc_threshold;
+	bool dc_enable;
+	bool fod_dimlayer_bl_block;
+	bool dim_layer_replace_dc;
 
 	int power_mode;
 	enum dsi_panel_physical_type panel_type;
@@ -359,8 +363,6 @@ int dsi_panel_unprepare(struct dsi_panel *panel);
 int dsi_panel_post_unprepare(struct dsi_panel *panel);
 
 int dsi_panel_set_backlight(struct dsi_panel *panel, u32 bl_lvl);
-
-int dsi_panel_enable_doze_backlight(struct dsi_panel *panel, u32 bl_lvl);
 
 int dsi_panel_update_pps(struct dsi_panel *panel);
 

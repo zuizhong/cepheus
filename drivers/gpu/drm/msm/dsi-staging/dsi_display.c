@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
- * Copyright (C) 2019 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -59,6 +58,16 @@ static const struct of_device_id dsi_display_dt_match[] = {
 	{.compatible = "qcom,dsi-display"},
 	{}
 };
+
+struct dsi_display *primary_display;
+struct dsi_display *get_primary_display(void)
+{
+	return primary_display;
+}
+EXPORT_SYMBOL(get_primary_display);
+
+static unsigned int timing_override;
+module_param(timing_override, uint, 0444);
 
 static void dsi_display_mask_ctrl_error_interrupts(struct dsi_display *display,
 			u32 mask, bool enable)
@@ -227,19 +236,10 @@ int dsi_display_set_backlight(struct drm_connector *connector,
 		goto error;
 	}
 
-	if (drm_dev && (drm_dev->doze_state == MSM_DRM_BLANK_LP1 || drm_dev->doze_state == MSM_DRM_BLANK_LP2)) {
-		rc = dsi_panel_set_doze_backlight(display, (u32)bl_temp);
-		if (rc)
-			pr_err("unable to set doze backlight\n");
-		rc = dsi_panel_enable_doze_backlight(panel, (u32)bl_temp);
-		if (rc)
-			pr_err("unable to enable doze backlight\n");
-	} else {
-		drm_dev->doze_brightness = DOZE_BRIGHTNESS_INVALID;
-		rc = dsi_panel_set_backlight(panel, (u32)bl_temp);
-		if (rc)
-			pr_err("unable to set backlight\n");
-	}
+	rc = dsi_panel_set_backlight(panel, (u32)bl_temp);
+	if (rc)
+		pr_err("unable to set backlight\n");
+
 	rc = dsi_display_clk_ctrl(dsi_display->dsi_clk_handle,
 			DSI_CORE_CLK, DSI_CLK_OFF);
 	if (rc) {
@@ -965,15 +965,11 @@ int dsi_display_read_panel(struct dsi_panel *panel, struct dsi_read_config *read
 	} else
 		return -EINVAL;
 
-	if (!panel->panel_initialized) {
-		pr_info("Panel not initialized\n");
+	if (!panel->panel_initialized)
 		return -EINVAL;
-	}
 
-	if (!read_config->enabled) {
-		pr_info("read operation was not permitted\n");
+	if (!read_config->enabled)
 		return -EPERM;
-	}
 
 	dsi_display_clk_ctrl(display->dsi_clk_handle,
 		DSI_ALL_CLKS, DSI_CLK_ON);
@@ -1012,10 +1008,6 @@ int dsi_display_read_panel(struct dsi_panel *panel, struct dsi_read_config *read
 		pr_err("rx cmd transfer failed rc=%d\n", rc);
 		goto exit;
 	}
-
-	for (i = 0; i < read_config->cmds_rlen; i++) //debug
-		pr_info("0x%x ", read_config->rbuf[i]);
-	pr_info("\n");
 
 exit:
 	dsi_display_cmd_engine_disable(display);
@@ -1230,34 +1222,45 @@ int dsi_display_set_power(struct drm_connector *connector,
 		int power_mode, void *disp)
 {
 	struct dsi_display *display = disp;
-	struct msm_drm_notifier notify_data;
-	int event = power_mode;
+	struct msm_drm_notifier g_notify_data;
 	int rc = 0;
+	struct drm_device *dev = NULL;
+	int event = 0;
+
 
 	if (!display || !display->panel) {
 		pr_err("invalid display/panel\n");
 		return -EINVAL;
 	}
 
-	notify_data.data = &event;
+        if (!connector || !connector->dev) {
+                pr_err("invalid connector/dev\n");
+                return -EINVAL;
+        } else {
+                dev = connector->dev;
+                event = dev->doze_state;
+        }
 
+	g_notify_data.data = &event;
 	switch (power_mode) {
 	case SDE_MODE_DPMS_LP1:
-		msm_drm_notifier_call_chain(MSM_DRM_EARLY_EVENT_BLANK, &notify_data);
+		msm_drm_notifier_call_chain(MSM_DRM_EARLY_EVENT_BLANK, &g_notify_data);
 		rc = dsi_panel_set_lp1(display->panel);
-		msm_drm_notifier_call_chain(MSM_DRM_EVENT_BLANK, &notify_data);
+		if (!rc)
+			dsi_panel_set_doze_backlight(display);
+		msm_drm_notifier_call_chain(MSM_DRM_EVENT_BLANK, &g_notify_data);
 		break;
 	case SDE_MODE_DPMS_LP2:
-		msm_drm_notifier_call_chain(MSM_DRM_EARLY_EVENT_BLANK, &notify_data);
+		msm_drm_notifier_call_chain(MSM_DRM_EARLY_EVENT_BLANK, &g_notify_data);
 		rc = dsi_panel_set_lp2(display->panel);
-		msm_drm_notifier_call_chain(MSM_DRM_EVENT_BLANK, &notify_data);
+		msm_drm_notifier_call_chain(MSM_DRM_EVENT_BLANK, &g_notify_data);
 		break;
 	case SDE_MODE_DPMS_ON:
 		if (display->panel->power_mode == SDE_MODE_DPMS_LP1 ||
 			display->panel->power_mode == SDE_MODE_DPMS_LP2) {
-			msm_drm_notifier_call_chain(MSM_DRM_EARLY_EVENT_BLANK, &notify_data);
+			msm_drm_notifier_call_chain(MSM_DRM_EARLY_EVENT_BLANK, &g_notify_data);
 			rc = dsi_panel_set_nolp(display->panel);
-			msm_drm_notifier_call_chain(MSM_DRM_EVENT_BLANK, &notify_data);
+			msm_drm_notifier_call_chain(MSM_DRM_EVENT_BLANK, &g_notify_data);
 		}
 		break;
 	case SDE_MODE_DPMS_OFF:
@@ -6454,6 +6457,12 @@ int dsi_display_get_modes(struct dsi_display *display,
 	num_dfps_rates = !dfps_caps.dfps_support ? 1 : dfps_caps.dfps_list_len;
 
 	timing_mode_count = display->panel->num_timing_nodes;
+	
+	if (timing_override >= timing_mode_count) {
+		pr_warn("[%s] ignoring invalid cmdline timing override %d\n",
+			display->name, timing_override);
+		timing_override = 0;
+	}
 
 	for (mode_idx = 0; mode_idx < timing_mode_count; mode_idx++) {
 		struct dsi_display_mode display_mode;
@@ -6463,6 +6472,9 @@ int dsi_display_get_modes(struct dsi_display *display,
 			topology_override = display->cmdline_topology;
 
 		memset(&display_mode, 0, sizeof(display_mode));
+
+		if (mode_idx != timing_override)
+			continue;
 
 		rc = dsi_panel_get_mode(display->panel, mode_idx,
 						&display_mode,
@@ -6536,6 +6548,7 @@ int dsi_display_get_modes(struct dsi_display *display,
 exit:
 	*out_modes = display->modes;
 	rc = 0;
+	primary_display = display;
 
 error:
 	if (rc)
@@ -7664,11 +7677,8 @@ int dsi_display_enable(struct dsi_display *display)
 				pr_err("Read elvss_dimming_cmds failed, rc=%d\n", rc);
 				return 0;
 			}
-			pr_info("elvss dimming read result %x\n", panel->elvss_dimming_cmds.rbuf[0]);
 			((u8 *)panel->hbm_fod_on.cmds[4].msg.tx_buf)[1] = (panel->elvss_dimming_cmds.rbuf[0]) & 0x7F;
-			pr_info("fod hbm on change to %x\n", ((u8 *)panel->hbm_fod_on.cmds[4].msg.tx_buf)[1]);
 			((u8 *)panel->hbm_fod_off.cmds[6].msg.tx_buf)[1] = panel->elvss_dimming_cmds.rbuf[0];
-			pr_info("fod hbm off change to %x\n", ((u8 *)panel->hbm_fod_off.cmds[6].msg.tx_buf)[1]);
 		}
 
 		dsi_panel_release_panel_lock(display->panel);
@@ -7974,3 +7984,4 @@ MODULE_PARM_DESC(dsi_display1,
 	"msm_drm.dsi_display1=<display node>:<configX> where <display node> is 'secondary dsi display node name' and <configX> where x represents index in the topology list");
 module_init(dsi_display_register);
 module_exit(dsi_display_unregister);
+
