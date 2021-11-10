@@ -965,11 +965,15 @@ int dsi_display_read_panel(struct dsi_panel *panel, struct dsi_read_config *read
 	} else
 		return -EINVAL;
 
-	if (!panel->panel_initialized)
+	if (!panel->panel_initialized) {
+		pr_info("Panel not initialized\n");
 		return -EINVAL;
+	}
 
-	if (!read_config->enabled)
+	if (!read_config->enabled) {
+		pr_info("read operation was not permitted\n");
 		return -EPERM;
+	}
 
 	dsi_display_clk_ctrl(display->dsi_clk_handle,
 		DSI_ALL_CLKS, DSI_CLK_ON);
@@ -1008,6 +1012,10 @@ int dsi_display_read_panel(struct dsi_panel *panel, struct dsi_read_config *read
 		pr_err("rx cmd transfer failed rc=%d\n", rc);
 		goto exit;
 	}
+
+	for (i = 0; i < read_config->cmds_rlen; i++) //debug
+		pr_info("0x%x ", read_config->rbuf[i]);
+	pr_info("\n");
 
 exit:
 	dsi_display_cmd_engine_disable(display);

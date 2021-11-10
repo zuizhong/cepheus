@@ -6345,3 +6345,4 @@ module_platform_driver(fg_gen4_driver);
 MODULE_DESCRIPTION("QPNP Fuel gauge GEN4 driver");
 MODULE_LICENSE("GPL v2");
 MODULE_ALIAS("platform:" FG_GEN4_DEV_NAME);
+

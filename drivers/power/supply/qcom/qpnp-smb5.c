@@ -1728,7 +1728,7 @@ static int smb5_usb_main_set_prop(struct power_supply *psy,
 static int smb5_usb_main_prop_is_writeable(struct power_supply *psy,
 				enum power_supply_property psp)
 {
-	int rc;
+	int rc = 0;
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_TOGGLE_STAT:
