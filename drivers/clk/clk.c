@@ -48,13 +48,6 @@ struct clk_handoff_vdd {
 	struct clk_vdd_class *vdd_class;
 };
 
-static struct hlist_head *all_lists[] = {
-	&clk_root_list,
-	&clk_orphan_list,
-	NULL,
-};
-
-<<<<<<< HEAD
 static LIST_HEAD(clk_handoff_vdd_list);
 static bool vdd_class_handoff_completed;
 static DEFINE_MUTEX(vdd_class_list_lock);
@@ -68,8 +61,12 @@ static DEFINE_MUTEX(vdd_class_list_lock);
  */
 static LIST_HEAD(clk_rate_change_list);
 
-=======
->>>>>>> dffb5c6ff09c51ed585e3e7665143df103867fc8
+static struct hlist_head *all_lists[] = {
+	&clk_root_list,
+	&clk_orphan_list,
+	NULL,
+};
+
 /***    private data structures    ***/
 
 struct clk_core {
@@ -1966,6 +1963,8 @@ static int clk_change_rate(struct clk_core *core)
 	if (core->flags & CLK_RECALC_NEW_RATES)
 		(void)clk_calc_new_rates(core, core->new_rate);
 
+	if (core->flags & CLK_CHILD_NO_RATE_PROP)
+		return rc;
 	/*
 	 * Use safe iteration, as change_rate can actually swap parents
 	 * for certain clock types.
@@ -2705,7 +2704,6 @@ static struct hlist_head *orphan_list[] = {
 	NULL,
 };
 
-<<<<<<< HEAD
 static void clk_state_subtree(struct clk_core *c)
 {
 	int vdd_level = 0;
@@ -2756,8 +2754,6 @@ static const struct file_operations clk_state_fops = {
 	.release	= single_release,
 };
 
-=======
->>>>>>> dffb5c6ff09c51ed585e3e7665143df103867fc8
 static void clk_summary_show_one(struct seq_file *s, struct clk_core *c,
 				 int level)
 {
