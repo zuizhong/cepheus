@@ -58,6 +58,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/reset.h>
 #include <linux/extcon.h>
+#include <linux/pm_qos.h>
 #include "unipro.h"
 
 #include <asm/irq.h>
@@ -1041,6 +1042,14 @@ struct ufs_hba {
 	bool force_g4;
 	/* distinguish between resume and restore */
 	bool restore;
+	struct {
+		struct pm_qos_request req;
+		struct work_struct get_work;
+		struct work_struct put_work;
+		struct mutex lock;
+		atomic_t count;
+		bool active;
+	} pm_qos;
 };
 
 static inline void ufshcd_mark_shutdown_ongoing(struct ufs_hba *hba)
@@ -1548,3 +1557,4 @@ static inline int ufshcd_vops_crypto_engine_get_req_status(struct ufs_hba *hba)
 }
 
 #endif /* End of Header */
+
