@@ -43,6 +43,17 @@ static HLIST_HEAD(clk_root_list);
 static HLIST_HEAD(clk_orphan_list);
 static LIST_HEAD(clk_notifier_list);
 
+static struct hlist_head *all_lists[] = {
+	&clk_root_list,
+	&clk_orphan_list,
+	NULL,
+};
+
+static struct hlist_head *orphan_list[] = {
+	&clk_orphan_list,
+	NULL,
+};
+
 struct clk_handoff_vdd {
 	struct list_head list;
 	struct clk_vdd_class *vdd_class;
@@ -60,12 +71,6 @@ static DEFINE_MUTEX(vdd_class_list_lock);
  * returning from clk_core_set_rate_nolock().
  */
 static LIST_HEAD(clk_rate_change_list);
-
-static struct hlist_head *all_lists[] = {
-	&clk_root_list,
-	&clk_orphan_list,
-	NULL,
-};
 
 /***    private data structures    ***/
 
@@ -1963,6 +1968,8 @@ static int clk_change_rate(struct clk_core *core)
 	if (core->flags & CLK_RECALC_NEW_RATES)
 		(void)clk_calc_new_rates(core, core->new_rate);
 
+	if (core->flags & CLK_CHILD_NO_RATE_PROP)
+		return rc;
 	/*
 	 * Use safe iteration, as change_rate can actually swap parents
 	 * for certain clock types.
@@ -2696,11 +2703,6 @@ static int inited = 0;
 static u32 debug_suspend;
 static DEFINE_MUTEX(clk_debug_lock);
 static HLIST_HEAD(clk_debug_list);
-
-static struct hlist_head *orphan_list[] = {
-	&clk_orphan_list,
-	NULL,
-};
 
 static void clk_state_subtree(struct clk_core *c)
 {

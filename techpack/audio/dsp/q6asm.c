@@ -260,10 +260,10 @@ static int is_adsp_raise_event(uint32_t cmd)
 	return -EINVAL;
 }
 
-#ifdef CONFIG_DEBUG_FS
 #define OUT_BUFFER_SIZE 56
 #define IN_BUFFER_SIZE 24
 
+#ifdef CONFIG_DEBUG_FS
 static struct timeval out_cold_tv;
 static struct timeval out_warm_tv;
 static struct timeval out_cont_tv;
@@ -277,7 +277,9 @@ static int in_cont_index;
 static int out_cold_index;
 static char *out_buffer;
 static char *in_buffer;
+#endif
 
+#ifdef CONFIG_DEBUG_FS
 static int audio_output_latency_dbgfs_open(struct inode *inode,
 							struct file *file)
 {
