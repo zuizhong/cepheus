@@ -1116,7 +1116,7 @@ static ssize_t mm_stat_show(struct device *dev,
 			zram->limit_pages << PAGE_SHIFT,
 			max_used << PAGE_SHIFT,
 			(u64)atomic64_read(&zram->stats.same_pages),
-			pool_stats.pages_compacted,
+			atomic_long_read(&pool_stats.pages_compacted),
 			zram_dedup_dup_size(zram),
 			zram_dedup_meta_size(zram),
 			(u64)atomic64_read(&zram->stats.huge_pages));
@@ -2264,3 +2264,4 @@ MODULE_PARM_DESC(num_devices, "Number of pre-created zram devices");
 MODULE_LICENSE("Dual BSD/GPL");
 MODULE_AUTHOR("Nitin Gupta <ngupta@vflare.org>");
 MODULE_DESCRIPTION("Compressed RAM Block Device");
+
