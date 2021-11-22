@@ -67,11 +67,6 @@ static struct hlist_head *all_lists[] = {
 	NULL,
 };
 
-static struct hlist_head *orphan_list[] = {
-	&clk_orphan_list,
-	NULL,
-};
-
 /***    private data structures    ***/
 
 struct clk_core {
@@ -2702,6 +2697,11 @@ static u32 debug_suspend;
 static DEFINE_MUTEX(clk_debug_lock);
 static HLIST_HEAD(clk_debug_list);
 
+static struct hlist_head *orphan_list[] = {
+	&clk_orphan_list,
+	NULL,
+};
+
 static void clk_state_subtree(struct clk_core *c)
 {
 	int vdd_level = 0;
@@ -5004,3 +5004,4 @@ void __init of_clk_init(const struct of_device_id *matches)
 	}
 }
 #endif
+
