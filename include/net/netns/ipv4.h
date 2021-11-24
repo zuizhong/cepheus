@@ -129,6 +129,7 @@ struct netns_ipv4 {
 	int sysctl_tcp_window_scaling;
 	int sysctl_tcp_timestamps;
 	struct inet_timewait_death_row tcp_death_row;
+	u8 sysctl_tcp_min_tso_segs;
 	int sysctl_max_syn_backlog;
 
 #ifdef CONFIG_NET_L3_MASTER_DEV

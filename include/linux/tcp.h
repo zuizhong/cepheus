@@ -210,6 +210,7 @@ struct tcp_sock {
 	} rack;
 	u16	advmss;		/* Advertised MSS			*/
 	u8	tlp_retrans:1,	/* TLP is a retransmission */
+		fast_ack_mode:2, /* which fast ack mode ? */
 		unused_1:7;
 	u32	chrono_start;	/* Start time in jiffies of a TCP chrono */
 	u32	chrono_stat[3];	/* Time in jiffies for chrono_stat stats */
@@ -254,6 +255,7 @@ struct tcp_sock {
 	u8	ecn_flags;	/* ECN status bits.			*/
 	u8	keepalive_probes; /* num of allowed keep alive probes	*/
 	u32	reordering;	/* Packet reordering metric.		*/
+	u32	reord_seen;	/* number of data packet reordering events */
 	u32	snd_up;		/* Urgent pointer		*/
 
 /*
