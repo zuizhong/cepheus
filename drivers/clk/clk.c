@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2010-2011 Canonical Ltd <jeremy.kerr@canonical.com>
  * Copyright (C) 2011-2012 Linaro Ltd <mturquette@linaro.org>
- * Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -30,6 +30,8 @@
 
 #include "clk.h"
 
+#if defined(CONFIG_COMMON_CLK)
+
 static DEFINE_SPINLOCK(enable_lock);
 static DEFINE_MUTEX(prepare_lock);
 
@@ -43,20 +45,15 @@ static HLIST_HEAD(clk_root_list);
 static HLIST_HEAD(clk_orphan_list);
 static LIST_HEAD(clk_notifier_list);
 
+struct clk_handoff_vdd {
+	struct list_head list;
+	struct clk_vdd_class *vdd_class;
+};
+
 static struct hlist_head *all_lists[] = {
 	&clk_root_list,
 	&clk_orphan_list,
 	NULL,
-};
-
-static struct hlist_head *orphan_list[] = {
-	&clk_orphan_list,
-	NULL,
-};
-
-struct clk_handoff_vdd {
-	struct list_head list;
-	struct clk_vdd_class *vdd_class;
 };
 
 static LIST_HEAD(clk_handoff_vdd_list);
@@ -2704,6 +2701,11 @@ static u32 debug_suspend;
 static DEFINE_MUTEX(clk_debug_lock);
 static HLIST_HEAD(clk_debug_list);
 
+static struct hlist_head *orphan_list[] = {
+	&clk_orphan_list,
+	NULL,
+};
+
 static void clk_state_subtree(struct clk_core *c)
 {
 	int vdd_level = 0;
@@ -4486,6 +4488,8 @@ int clk_notifier_unregister(struct clk *clk, struct notifier_block *nb)
 }
 EXPORT_SYMBOL_GPL(clk_notifier_unregister);
 
+#endif /* CONFIG_COMMON_CLK */
+
 #ifdef CONFIG_OF
 /**
  * struct of_clk_provider - Clock provider registration structure
@@ -4523,6 +4527,8 @@ struct clk_hw *of_clk_hw_simple_get(struct of_phandle_args *clkspec, void *data)
 }
 EXPORT_SYMBOL_GPL(of_clk_hw_simple_get);
 
+#if defined(CONFIG_COMMON_CLK)
+
 struct clk *of_clk_src_onecell_get(struct of_phandle_args *clkspec, void *data)
 {
 	struct clk_onecell_data *clk_data = data;
@@ -4551,6 +4557,8 @@ of_clk_hw_onecell_get(struct of_phandle_args *clkspec, void *data)
 	return hw_data->hws[idx];
 }
 EXPORT_SYMBOL_GPL(of_clk_hw_onecell_get);
+
+#endif /* CONFIG_COMMON_CLK */
 
 /**
  * of_clk_add_provider() - Register a clock provider for a node
@@ -4823,8 +4831,10 @@ const char *of_clk_get_parent_name(struct device_node *np, int index)
 			else
 				clk_name = NULL;
 		} else {
+#if defined(CONFIG_COMMON_CLK)
 			clk_name = __clk_get_name(clk);
 			clk_put(clk);
+#endif
 		}
 	}
 
@@ -4854,6 +4864,8 @@ int of_clk_parent_fill(struct device_node *np, const char **parents,
 	return i;
 }
 EXPORT_SYMBOL_GPL(of_clk_parent_fill);
+
+#if defined(CONFIG_COMMON_CLK)
 
 struct clock_provider {
 	of_clk_init_cb_t clk_init_cb;
@@ -5005,5 +5017,7 @@ void __init of_clk_init(const struct of_device_id *matches)
 			force = true;
 	}
 }
-#endif
 
+#endif /* CONFIG_COMMON_CLK */
+
+#endif
