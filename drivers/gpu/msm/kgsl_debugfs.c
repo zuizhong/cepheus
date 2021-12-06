@@ -175,6 +175,7 @@ static int print_mem_entry(void *data, void *ptr)
 			 */
 			0, m->size, entry->id, flags,
 			memtype_str(usermem_type),
+			
 			usage, (m->sgt ? m->sgt->nents : 0), m->mapsize,
 			atomic_read(&entry->map_count),
 			egl_surface_count, egl_image_count);
