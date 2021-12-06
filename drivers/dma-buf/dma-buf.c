@@ -40,6 +40,7 @@
 #include <linux/fdtable.h>
 #include <linux/list_sort.h>
 #include <linux/hashtable.h>
+#include <linux/dcache.h>
 #include <uapi/linux/dma-buf.h>
 
 static atomic_long_t name_counter;
@@ -73,9 +74,18 @@ struct dma_proc {
 
 static struct dma_buf_list db_list;
 
+static void dmabuf_dent_put(struct dma_buf *dmabuf)
+{
+	if (atomic_dec_and_test(&dmabuf->dent_count)) {
+		kfree(dmabuf->name);
+		kfree(dmabuf);
+	}
+}
+
 static int dma_buf_release(struct inode *inode, struct file *file)
 {
 	struct dma_buf *dmabuf;
+	struct dentry *dentry = file->f_path.dentry;
 	int dtor_ret = 0;
 
 	if (!is_dma_buf_file(file))
@@ -83,6 +93,9 @@ static int dma_buf_release(struct inode *inode, struct file *file)
 
 	dmabuf = file->private_data;
 
+	spin_lock(&dentry->d_lock);
+	dentry->d_fsdata = NULL;
+	spin_unlock(&dentry->d_lock);
 	BUG_ON(dmabuf->vmapping_counter);
 
 	/*
@@ -114,8 +127,7 @@ static int dma_buf_release(struct inode *inode, struct file *file)
 		reservation_object_fini(dmabuf->resv);
 
 	module_put(dmabuf->owner);
-	kfree(dmabuf->name);
-	kfree(dmabuf);
+	dmabuf_dent_put(dmabuf);
 	return 0;
 }
 
@@ -492,6 +504,7 @@ struct dma_buf *dma_buf_export(const struct dma_buf_export_info *exp_info)
 	dmabuf->cb_excl.active = dmabuf->cb_shared.active = 0;
 	dmabuf->name = bufname;
 	dmabuf->ktime = ktime_get();
+	atomic_set(&dmabuf->dent_count, 1);
 
 	if (!resv) {
 		resv = (struct reservation_object *)&dmabuf[1];
