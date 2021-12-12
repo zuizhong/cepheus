@@ -135,7 +135,7 @@ static unsigned long long_max = LONG_MAX;
 static int one_hundred = 100;
 static int one_thousand = 1000;
 
-static int max_swappiness = 170;
+static int max_swappiness = 200;
 
 #ifdef CONFIG_SCHED_WALT
 static int two_million = 2000000;
