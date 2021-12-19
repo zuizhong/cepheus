@@ -4161,9 +4161,6 @@ void sdhci_msm_pm_qos_irq_init(struct sdhci_host *host)
 	if ((msm_host->pm_qos_irq.req.type != PM_QOS_REQ_AFFINE_CORES) &&
 		(msm_host->pm_qos_irq.req.type != PM_QOS_REQ_ALL_CORES))
 		set_affine_irq(msm_host, host);
-	else
-		cpumask_copy(&msm_host->pm_qos_irq.req.cpus_affine,
-			cpumask_of(msm_host->pdata->pm_qos_data.irq_cpu));
 
 	sdhci_msm_pm_qos_wq_init(msm_host);
 
@@ -4218,8 +4215,7 @@ static ssize_t sdhci_msm_pm_qos_group_show(struct device *dev,
 		group = &msm_host->pm_qos[i];
 		offset += snprintf(&buf[offset], PAGE_SIZE,
 			"Group #%d (mask=0x%lx) PM QoS: enabled=%d, counter=%d, latency=%d\n",
-			i, group->req.cpus_affine.bits[0],
-			msm_host->pm_qos_group_enable,
+			i, msm_host->pm_qos_group_enable,
 			atomic_read(&group->counter),
 			group->latency);
 	}
@@ -4377,15 +4373,12 @@ void sdhci_msm_pm_qos_cpu_init(struct sdhci_host *host,
 			sdhci_msm_pm_qos_cpu_unvote_work);
 		atomic_set(&group->counter, 0);
 		group->req.type = PM_QOS_REQ_AFFINE_CORES;
-		cpumask_copy(&group->req.cpus_affine,
-			&msm_host->pdata->pm_qos_data.cpu_group_map.mask[i]);
 		/* We set default latency here for all pm_qos cpu groups. */
 		group->latency = PM_QOS_DEFAULT_VALUE;
 		pm_qos_add_request(&group->req, PM_QOS_CPU_DMA_LATENCY,
 			group->latency);
 		pr_info("%s (): voted for group #%d (mask=0x%lx) latency=%d\n",
 			__func__, i,
-			group->req.cpus_affine.bits[0],
 			group->latency);
 	}
 	msm_host->pm_qos_prev_cpu = -1;
@@ -5110,19 +5103,6 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 					__func__, ret);
 			goto vreg_deinit;
 		}
-	}
-
-	if ((sdhci_readl(host, SDHCI_CAPABILITIES) & SDHCI_CAN_64BIT) &&
-		(dma_supported(mmc_dev(host->mmc), DMA_BIT_MASK(64)))) {
-		host->dma_mask = DMA_BIT_MASK(64);
-		mmc_dev(host->mmc)->dma_mask = &host->dma_mask;
-		mmc_dev(host->mmc)->coherent_dma_mask  = host->dma_mask;
-	} else if (dma_supported(mmc_dev(host->mmc), DMA_BIT_MASK(32))) {
-		host->dma_mask = DMA_BIT_MASK(32);
-		mmc_dev(host->mmc)->dma_mask = &host->dma_mask;
-		mmc_dev(host->mmc)->coherent_dma_mask  = host->dma_mask;
-	} else {
-		dev_err(&pdev->dev, "%s: Failed to set dma mask\n", __func__);
 	}
 
 	msm_host->pdata->sdiowakeup_irq = platform_get_irq_byname(pdev,
