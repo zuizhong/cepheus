@@ -48,14 +48,14 @@ msm_drm-y := \
 	sde/sde_color_processing.o \
 	sde/sde_vbif.o \
 	sde_io_util.o \
+	sde_dbg.o \
+	sde_dbg_evtlog.o \
 	sde/sde_hw_reg_dma_v1_color_proc.o \
 	sde/sde_hw_color_proc_v4.o \
 	sde/sde_hw_ad4.o \
 	sde_edid_parser.o \
 	sde_hdcp_1x.o \
 	sde_hdcp_2x.o \
-	sde_dbg.o \
-	sde_dbg_evtlog.o \
 	xiaomi_frame_stat.o
 
 msm_drm-$(CONFIG_DRM_MSM_HDMI) += hdmi/hdmi.o \

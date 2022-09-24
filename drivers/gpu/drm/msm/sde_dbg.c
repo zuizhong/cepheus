@@ -5056,7 +5056,7 @@ static const struct file_operations sde_reg_fops = {
 	.write = sde_dbg_reg_base_reg_write,
 };
 
-int sde_dbg_debugfs_register(struct device *dev)
+int sde_dbg_debugfs_register(struct dentry *debugfs_root)
 {
 	static struct sde_dbg_base *dbg = &sde_dbg_base;
 	struct sde_dbg_reg_base *blk_base;
@@ -5139,7 +5139,7 @@ int sde_dbg_debugfs_register(struct device *dev)
 
 #else
 
-int sde_dbg_debugfs_register(struct device *dev)
+int sde_dbg_debugfs_register(struct dentry *debugfs_root)
 {
 	return 0;
 }
