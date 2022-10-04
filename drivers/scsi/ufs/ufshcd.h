@@ -423,6 +423,7 @@ struct ufs_hba_variant {
 	struct device				*dev;
 	const char				*name;
 	struct ufs_hba_variant_ops		*vops;
+	struct ufs_hba_pm_qos_variant_ops	*pm_qos_vops;
 	struct ufs_hba_crypto_variant_ops	*crypto_vops;
 };
 
