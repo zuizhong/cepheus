@@ -1063,7 +1063,9 @@ static int dsi_panel_parse_timing(struct dsi_mode_info *mode,
 
 	mode->clk_rate_hz = !rc ? tmp64 : 0;
 	if (tmp64 == 1100000000 || tmp64 == 1103000000) {
-        if (framerate_override == 7)
+        if (framerate_override == 8)
+       			mode->clk_rate_hz = 1705000000; // 93hz
+		else if (framerate_override == 7)
 			mode->clk_rate_hz = 1650000000; // 90hz
 		else if (framerate_override == 6)
 			mode->clk_rate_hz = 1540000000; // 84hz
@@ -1102,7 +1104,9 @@ static int dsi_panel_parse_timing(struct dsi_mode_info *mode,
 		goto error;
 	}
 	if (mode->refresh_rate == 60) {
-        if (framerate_override == 7)
+        if (framerate_override == 8)
+        		mode->refresh_rate = 93;
+		else if (framerate_override == 7)
 			mode->refresh_rate = 90;
 		else if (framerate_override == 6)
 			mode->refresh_rate = 84;
