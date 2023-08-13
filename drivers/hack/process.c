@@ -1,6 +1,5 @@
 #include "process.h"
 #include <linux/sched.h>
-#include <linux/sched/mm.h>
 #include <linux/module.h>
 #include <linux/tty.h>
 #include <linux/mm.h>
@@ -13,7 +12,7 @@ extern struct mm_struct *get_task_mm(struct task_struct *task);
 #if(LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 61))
 extern void mmput(struct mm_struct *);
 #endif
-
+extern void mmput(struct mm_struct *);
 uintptr_t get_module_base(pid_t pid, char* name) 
 {
     struct pid* pid_struct;

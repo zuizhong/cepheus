@@ -5,7 +5,6 @@
 #include <linux/slab.h>
 #include <linux/uaccess.h>
 #include <linux/version.h>
-#include <linux/sched/mm.h>
 
 #include <asm/cpu.h>
 #include <asm/io.h>
@@ -59,6 +58,7 @@ phys_addr_t translate_linear_address(struct mm_struct* mm, uintptr_t va) {
 	return page_addr + page_offset;
 }
 #else
+extern void mmput(struct mm_struct *);
 phys_addr_t translate_linear_address(struct mm_struct* mm, uintptr_t va) {
 
     pgd_t *pgd;
@@ -97,11 +97,9 @@ phys_addr_t translate_linear_address(struct mm_struct* mm, uintptr_t va) {
 }
 #endif
 
-#ifndef ARCH_HAS_VALID_PHYS_ADDR_RANGE
-static inline int valid_phys_addr_range(phys_addr_t addr, size_t count) {
+int valid_phys_addr_range(phys_addr_t addr, size_t count) {
     return addr + count <= __pa(high_memory);
 }
-#endif
 
 bool read_physical_address(phys_addr_t pa, void* buffer, size_t size) {
     void* mapped;
