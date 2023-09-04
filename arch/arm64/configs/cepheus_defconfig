@@ -5253,6 +5253,16 @@ CONFIG_ESOC_MDM_DBG_ENG=y
 # CONFIG_MDM_DBG_REQ_ENG is not set
 
 #
+# Trusty
+#
+CONFIG_TRUSTY=y
+# CONFIG_TRUSTY_VIRQ_SIMULATION is not set
+# CONFIG_TRUSTY_FIQ is not set
+# CONFIG_TRUSTY_FIQ_ARM64 is not set
+CONFIG_TRUSTY_LOG=y
+# CONFIG_TRUSTY_VIRTIO is not set
+
+#
 # Qualcomm RmNet extensions
 #
 CONFIG_RMNET_PERF=y
